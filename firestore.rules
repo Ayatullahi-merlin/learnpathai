@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (default deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reuseable global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function resourceBelongsToUser() {
+      return isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function incomingBelongsToUser() {
+      return isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. Users collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['uid', 'name', 'email', 'targetExam', 'createdAt'])
+                      && request.resource.data.uid == request.auth.uid;
+      allow update: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
+    }
+
+    // 2. Assessments collection
+    match /assessments/{assessmentId} {
+      allow get: if resourceBelongsToUser();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if incomingBelongsToUser() && isValidId(assessmentId);
+      allow update, delete: if resourceBelongsToUser();
+    }
+
+    // 3. Study Plans collection
+    match /studyPlans/{studyPlanId} {
+      allow get: if resourceBelongsToUser();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if incomingBelongsToUser() && isValidId(studyPlanId);
+      allow update, delete: if resourceBelongsToUser();
+    }
+
+    // 4. Chat History collection
+    match /chatHistory/{chatId} {
+      allow get: if resourceBelongsToUser();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if incomingBelongsToUser() && isValidId(chatId);
+      allow update, delete: if resourceBelongsToUser();
+    }
+
+    // 5. Progress collection
+    match /progress/{progressId} {
+      allow get: if resourceBelongsToUser();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if incomingBelongsToUser() && isValidId(progressId);
+      allow update, delete: if resourceBelongsToUser();
+    }
+
+    // 6. Badges collection
+    match /badges/{badgeId} {
+      allow get: if resourceBelongsToUser();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if incomingBelongsToUser() && isValidId(badgeId);
+      allow update, delete: if resourceBelongsToUser();
+    }
+  }
+}

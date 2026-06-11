@@ -1,0 +1,6 @@
+{
+  "name": "LearnPath AI",
+  "description": "AI-powered personalized learning platform for Nigerian students preparing for WAEC, NECO, and JAMB.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

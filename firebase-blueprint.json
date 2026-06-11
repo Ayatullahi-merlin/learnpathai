@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with academic targets, subjects, and stats.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "targetExam": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "targetExam", "createdAt"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "Diagnostic and subject assessments taken by students.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "subject": { "type": "string" },
+        "score": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "strengths": { "type": "array" },
+        "weaknesses": { "type": "array" },
+        "takenAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "subject", "score", "totalQuestions", "takenAt"]
+    },
+    "StudyPlan": {
+      "title": "StudyPlan",
+      "description": "Personalized AI-generated study calendar and recommendations.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subject": { "type": "string" },
+        "weeks": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "subject", "weeks", "createdAt"]
+    },
+    "ChatHistory": {
+      "title": "ChatHistory",
+      "description": "Conversation threads with AI tutor.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "messages": { "type": "array" },
+        "lastUpdated": { "type": "string" }
+      },
+      "required": ["userId", "messages", "lastUpdated"]
+    },
+    "Progress": {
+      "title": "Progress",
+      "description": "Daily study streak and subject progression details.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "streak": { "type": "number" },
+        "lastActive": { "type": "string" },
+        "completedHours": { "type": "number" },
+        "completedTopics": { "type": "array" }
+      },
+      "required": ["userId", "streak", "lastActive", "completedHours"]
+    },
+    "Badge": {
+      "title": "Badge",
+      "description": "Achievement badges unlocked by students.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "badgeName": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "unlockedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "badgeName", "description", "icon", "unlockedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Identifies users and profiles mapped by original UID."
+    },
+    "/assessments/{assessmentId}": {
+      "schema": "Assessment",
+      "description": "Stores diagnostic exam results."
+    },
+    "/studyPlans/{studyPlanId}": {
+      "schema": "StudyPlan",
+      "description": "Personalized generated study tracks."
+    },
+    "/chatHistory/{chatId}": {
+      "schema": "ChatHistory",
+      "description": "Persisted AI interactive conversations."
+    },
+    "/progress/{progressId}": {
+      "schema": "Progress",
+      "description": "Daily progression logs and study streaks."
+    },
+    "/badges/{badgeId}": {
+      "schema": "Badge",
+      "description": "Unlocks and achievements recorded per user."
+    }
+  }
+}
