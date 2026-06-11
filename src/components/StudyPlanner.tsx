@@ -77,8 +77,103 @@ export default function StudyPlanner({
         throw new Error('Plan not returned from API.');
       }
     } catch (err) {
-      console.error('Error generating study schedule:', err);
-      alert('Tufiakwa! Failed to compile AI study timetable. Check back in a moment.');
+      console.warn('Error generating study schedule, loading client-side calendar fallback:', err);
+      // Create an instant client-side fallback study plan so the student can keep practicing!
+      const fallbackPlan: StudyPlan = {
+        id: `plan-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        userId: profile?.uid || 'guest',
+        subject: subject,
+        targetExam: targetExam,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        weeks: [
+          {
+            weekNumber: 1,
+            theme: `Understanding the Basics: Key Principles`,
+            topics: [
+              {
+                id: `topic-${Date.now()}-1`,
+                title: `Syllabus Essentials and Definitions`,
+                description: `Deep dive into standard definitions, terminology, and key concepts of ${subject} as required by the ${targetExam} syllabus.`,
+                hoursNeeded: 5,
+                completed: false
+              },
+              {
+                id: `topic-${Date.now()}-2`,
+                title: `Simplifying Equations and Theories`,
+                description: `Practice answering starter quiz questions and resolving simple examples step-by-step.`,
+                hoursNeeded: 3,
+                completed: false
+              }
+            ],
+            tips: `Always write down standard formula first when resolving calculations`
+          },
+          {
+            weekNumber: 2,
+            theme: `Intensive Module: Complex Problem Solving`,
+            topics: [
+              {
+                id: `topic-${Date.now()}-3`,
+                title: `Advanced Formula Applications`,
+                description: `Diving into multi-layered concepts. Work through detailed practice scenarios with active textbook references.`,
+                hoursNeeded: 6,
+                completed: false
+              },
+              {
+                id: `topic-${Date.now()}-4`,
+                title: `Theoretical & Diagrammatic Review`,
+                description: `Familiarize yourself with diagram labeling structures and critical scientific arguments.`,
+                hoursNeeded: 4,
+                completed: false
+              }
+            ],
+            tips: `Take a ten-minute break for every 45 minutes of studying to refresh focus.`
+          },
+          {
+            weekNumber: 3,
+            theme: `Under Timed Conditions: Speed and Pacing Drills`,
+            topics: [
+              {
+                id: `topic-${Date.now()}-5`,
+                title: `Past Exam Standard Drill Sets`,
+                description: `Set up a chronological collection of the official 5-year past papers and solve them.`,
+                hoursNeeded: 6,
+                completed: false
+              },
+              {
+                id: `topic-${Date.now()}-6`,
+                title: `Interactive CBT Pace Optimizations`,
+                description: `Solve multiple choice questions rapidly under standard 40-50 second pacing constraints.`,
+                hoursNeeded: 4,
+                completed: false
+              }
+            ],
+            tips: `Practice using key drafting paper to sketch your active equations clearly.`
+          },
+          {
+            weekNumber: 4,
+            theme: `Ultimate Revision and Final Mock Check`,
+            topics: [
+              {
+                id: `topic-${Date.now()}-7`,
+                title: `Core Laws and Constants Revision`,
+                description: `Revise key study summaries, cheat-sheets, laws, and critical diagrams.`,
+                hoursNeeded: 4,
+                completed: false
+              },
+              {
+                id: `topic-${Date.now()}-8`,
+                title: `Full Mock Examination Assessment`,
+                description: `Take a full diagnostic quiz test to measure exam preparedness.`,
+                hoursNeeded: 4,
+                completed: false
+              }
+            ],
+            tips: `A good night's sleep is the final ingredient of absolute victory!`
+          }
+        ]
+      };
+      onSavePlan(fallbackPlan);
     } finally {
       setLoading(false);
     }

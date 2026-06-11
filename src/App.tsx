@@ -53,7 +53,6 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        setLoading(true);
         // Load initial offline state first for instantaneous responsiveness (crucial on 3G)
         const localProf = getLocalBackup<UserProfile | null>(`profile_${currentUser.uid}`, null);
         if (localProf) {
@@ -65,6 +64,12 @@ export default function App() {
           setChatHistory(getLocalBackup<ChatMessage[]>(`chatHistory_${currentUser.uid}`, []));
           setProgress(getLocalBackup<StudentProgress | null>(`progress_${currentUser.uid}`, null));
           setBadges(getLocalBackup<Badge[]>(`badges_${currentUser.uid}`, []));
+          
+          // Disable main screen blocker spinner immediately since we have fully populated cache state!
+          setLoading(false);
+        } else {
+          // No local cache present, we must block screen to fetch initial credentials
+          setLoading(true);
         }
 
         try {
@@ -85,7 +90,7 @@ export default function App() {
           if (fetchedProfile) {
             setProfile(fetchedProfile);
             setIsNewUserSetupOpen(false);
-            // Fetch dependent resources
+            // Fetch dependent resources in the background or foreground without causing serial network penalties
             await loadStudentSubData(currentUser.uid, fetchedProfile);
           } else {
             // Unregistered user, open onboarding popup
@@ -111,88 +116,100 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch student records from Firestore
+  // Fetch student records from Firestore (OPTIMIZED: executed in dynamic parallel tracks)
   const loadStudentSubData = async (uid: string, currentProfile: UserProfile) => {
-    // 1. Fetch Assessments
-    try {
-      const assessmentSnap = await getDocs(query(collection(db, 'assessments'), where('userId', '==', uid)));
-      const fetchedAssessments = assessmentSnap.docs.map(doc => doc.data() as AssessmentResult);
-      setAssessments(fetchedAssessments);
-      saveLocalBackup(`assessments_${uid}`, fetchedAssessments);
-    } catch (err) {
-      console.warn("Error loading assessments, falling back to localStorage:", err);
-      const backup = getLocalBackup<AssessmentResult[]>(`assessments_${uid}`, []);
-      setAssessments(backup);
-    }
+    const fetchAssessments = async () => {
+      try {
+        const assessmentSnap = await getDocs(query(collection(db, 'assessments'), where('userId', '==', uid)));
+        const fetchedAssessments = assessmentSnap.docs.map(doc => doc.data() as AssessmentResult);
+        setAssessments(fetchedAssessments);
+        saveLocalBackup(`assessments_${uid}`, fetchedAssessments);
+      } catch (err) {
+        console.warn("Error loading assessments, falling back to localStorage:", err);
+        const backup = getLocalBackup<AssessmentResult[]>(`assessments_${uid}`, []);
+        setAssessments(backup);
+      }
+    };
 
-    // 2. Fetch Study Plans
-    try {
-      const studyPlanSnap = await getDocs(query(collection(db, 'studyPlans'), where('userId', '==', uid)));
-      if (!studyPlanSnap.empty) {
-        const plans = studyPlanSnap.docs.map(doc => doc.data() as StudyPlan);
-        plans.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-        setActivePlan(plans[0]);
-        saveLocalBackup(`activePlan_${uid}`, plans[0]);
-      } else {
+    const fetchStudyPlans = async () => {
+      try {
+        const studyPlanSnap = await getDocs(query(collection(db, 'studyPlans'), where('userId', '==', uid)));
+        if (!studyPlanSnap.empty) {
+          const plans = studyPlanSnap.docs.map(doc => doc.data() as StudyPlan);
+          plans.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          setActivePlan(plans[0]);
+          saveLocalBackup(`activePlan_${uid}`, plans[0]);
+        } else {
+          const backup = getLocalBackup<StudyPlan | null>(`activePlan_${uid}`, null);
+          setActivePlan(backup);
+        }
+      } catch (err) {
+        console.warn("Error loading study plans, falling back to localStorage:", err);
         const backup = getLocalBackup<StudyPlan | null>(`activePlan_${uid}`, null);
         setActivePlan(backup);
       }
-    } catch (err) {
-      console.warn("Error loading study plans, falling back to localStorage:", err);
-      const backup = getLocalBackup<StudyPlan | null>(`activePlan_${uid}`, null);
-      setActivePlan(backup);
-    }
+    };
 
-    // 3. Fetch Badges
-    try {
-      const badgesSnap = await getDocs(query(collection(db, 'badges'), where('userId', '==', uid)));
-      const fetchedBadges = badgesSnap.docs.map(doc => doc.data() as Badge);
-      setBadges(fetchedBadges);
-      saveLocalBackup(`badges_${uid}`, fetchedBadges);
-    } catch (err) {
-      console.warn("Error loading badges, falling back to localStorage:", err);
-      const backup = getLocalBackup<Badge[]>(`badges_${uid}`, []);
-      setBadges(backup);
-    }
+    const fetchBadges = async () => {
+      try {
+        const badgesSnap = await getDocs(query(collection(db, 'badges'), where('userId', '==', uid)));
+        const fetchedBadges = badgesSnap.docs.map(doc => doc.data() as Badge);
+        setBadges(fetchedBadges);
+        saveLocalBackup(`badges_${uid}`, fetchedBadges);
+      } catch (err) {
+        console.warn("Error loading badges, falling back to localStorage:", err);
+        const backup = getLocalBackup<Badge[]>(`badges_${uid}`, []);
+        setBadges(backup);
+      }
+    };
 
-    // 4. Fetch Progress
-    try {
-      const progressRef = doc(db, 'progress', uid);
-      const progressSnap = await getDoc(progressRef);
-      if (progressSnap.exists()) {
-        const fetchedProgress = progressSnap.data() as StudentProgress;
-        setProgress(fetchedProgress);
-        saveLocalBackup(`progress_${uid}`, fetchedProgress);
-      } else {
-        // Initialize Baseline Progress
-        const baselineProgress: StudentProgress = {
-          userId: uid,
-          streak: 1,
-          lastActive: new Date().toISOString(),
-          completedHours: 0,
-          completedTopics: []
-        };
-        await setDoc(progressRef, baselineProgress);
-        setProgress(baselineProgress);
-        saveLocalBackup(`progress_${uid}`, baselineProgress);
+    const fetchProgress = async () => {
+      try {
+        const progressRef = doc(db, 'progress', uid);
+        const progressSnap = await getDoc(progressRef);
+        if (progressSnap.exists()) {
+          const fetchedProgress = progressSnap.data() as StudentProgress;
+          setProgress(fetchedProgress);
+          saveLocalBackup(`progress_${uid}`, fetchedProgress);
+        } else {
+          // Initialize Baseline Progress
+          const baselineProgress: StudentProgress = {
+            userId: uid,
+            streak: 1,
+            lastActive: new Date().toISOString(),
+            completedHours: 0,
+            completedTopics: []
+          };
+          await setDoc(progressRef, baselineProgress);
+          setProgress(baselineProgress);
+          saveLocalBackup(`progress_${uid}`, baselineProgress);
+        }
+      } catch (err) {
+        console.warn("Error loading progress, falling back to localStorage:", err);
+        const backup = getLocalBackup<StudentProgress | null>(`progress_${uid}`, null);
+        if (backup) {
+          setProgress(backup);
+        } else {
+          const baselineProgress: StudentProgress = {
+            userId: uid,
+            streak: 1,
+            lastActive: new Date().toISOString(),
+            completedHours: 0,
+            completedTopics: []
+          };
+          setProgress(baselineProgress);
+          saveLocalBackup(`progress_${uid}`, baselineProgress);
+        }
       }
-    } catch (err) {
-      console.warn("Error loading progress, falling back to localStorage:", err);
-      const backup = getLocalBackup<StudentProgress | null>(`progress_${uid}`, null);
-      if (backup) {
-        setProgress(backup);
-      } else {
-        const baselineProgress: StudentProgress = {
-          userId: uid,
-          streak: 1,
-          lastActive: new Date().toISOString(),
-          completedHours: 0,
-          completedTopics: []
-        };
-        setProgress(baselineProgress);
-        saveLocalBackup(`progress_${uid}`, baselineProgress);
-      }
-    }
+    };
+
+    // Execute concurrently over the network to bypass serial roundtrip connection latency
+    await Promise.all([
+      fetchAssessments(),
+      fetchStudyPlans(),
+      fetchBadges(),
+      fetchProgress()
+    ]);
   };
 
   // Google Authentication Initiation ( signInWithPopup is iframe safe and white-listed )

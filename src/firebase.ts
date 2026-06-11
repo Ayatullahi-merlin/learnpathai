@@ -52,14 +52,4 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test Firebase connection to verify read/write accessibility
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('offline')) {
-      console.warn("Firebase warning: Connection is currently offline.");
-    }
-  }
-}
-testConnection();
+// File connection testing replaced with dynamic action handlers
